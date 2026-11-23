@@ -1,0 +1,13 @@
+# Datos privados y derivados 
+data/raw/
+data/clean/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+.Renviron
+
+# Temporales
+~$*
+.DS_Store

@@ -1,12 +1,39 @@
 # RF
 
-library(dplyr); library(ggplot2); library(survival); library(ranger)
+library(dplyr)
+library(ggplot2)
+library(survival)
+library(ranger)
 
 dir.create("reports/figures", recursive = TRUE, showWarnings = FALSE)
 source("R/prep_modelo.R")
 x <- cargar_modelo()
 
+# Paleta y etiquetas legibles
+color_imp_pos <- "#3B6E4C"
+color_imp_baj <- "#9AA5B1"
 
+etiquetas_pred <- c(
+  "categoria_madre" = "Categoría de madre",
+  "sexo"            = "Sexo",
+  "raza"            = "Raza",
+  "asistido"        = "Tipo de parto (asistido)",
+  "peso_nacer_kg"   = "Peso al nacer (kg)",
+  "anio"            = "Año",
+  "mes"             = "Mes de nacimiento",
+  "tmin_media_7d"   = "T. mín. media (7 días)",
+  "prop_lluvia_7d"  = "Proporción lluvia (7 días)",
+  "prop_frio_7d"    = "Proporción frío (7 días)",
+  "hum_media_7d"    = "Humedad media (7 días)",
+  "tmin_media_21d"  = "T. mín. media (21 días)",
+  "prop_lluvia_21d" = "Proporción lluvia (21 días)",
+  "prop_frio_21d"   = "Proporción frío (21 días)"
+)
+
+limpiar_pred <- function(v) {
+  out <- etiquetas_pred[v]
+  ifelse(is.na(out), v, unname(out))
+}
 
 # Solo variables conocidas al nacimiento o ambientales (sin obs_neumonia/diarrea/etc.)
 pred <- c("categoria_madre", "sexo", "raza", "asistido", "peso_nacer_kg", "anio", "mes",
@@ -19,11 +46,33 @@ rf <- ranger(Surv(tiempo_surv, muerte_n) ~ ., data = rf_df, num.trees = 1000,
              min.node.size = 15, importance = "permutation")
 cat("C-index OOB del Random Forest:", round(1 - rf$prediction.error, 3), "\n")
 
-imp <- tibble::enframe(rf$variable.importance, "variable", "importancia")
-ggplot(imp, aes(importancia, reorder(variable, importancia))) + geom_col(fill = "grey60") +
-  labs(x = "Importancia por permutación", y = NULL) + theme_minimal()
-ggsave("reports/figures/rf_importancia.png", width = 7, height = 5, dpi = 200)
+imp <- tibble::enframe(rf$variable.importance, "variable", "importancia") |>
+  mutate(
+    etiqueta = limpiar_pred(variable),
+    aporte   = ifelse(importancia > 0.001, "Aporte positivo", "Bajo / nulo")
+  )
 
+g_imp <- ggplot(imp, aes(x = importancia, y = reorder(etiqueta, importancia), fill = aporte)) +
+  geom_col(width = 0.68) +
+  geom_vline(xintercept = 0, linetype = 2, color = "#52606D", linewidth = 0.6) +
+  scale_fill_manual(
+    values = c("Aporte positivo" = color_imp_pos, "Bajo / nulo" = color_imp_baj),
+    name = NULL
+  ) +
+  labs(
+    title = "Importancia de variables en Random Forest de supervivencia",
+    subtitle = paste0("Importancia por permutación (C-index OOB = ", round(1 - rf$prediction.error, 3), ")"),
+    x = "Importancia por permutación",
+    y = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 13, color = "#1F2933"),
+    plot.subtitle = element_text(size = 10, color = "#52606D"),
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  )
+ggsave("reports/figures/rf_importancia.png", g_imp, width = 8, height = 5.2, dpi = 220)
 
 # Validación cruzada 5 folds: Cox vs Random Forest
 set.seed(2026)
