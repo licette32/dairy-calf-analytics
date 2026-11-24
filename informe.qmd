@@ -1,0 +1,109 @@
+---
+title: "Mortalidad de terneros en guachera"
+subtitle: "Tablero de seguimiento · tambo lechero, Santa Fe"
+format: dashboard
+lang: es
+---
+
+```{r}
+#| include: false
+library(dplyr); library(readr); library(knitr)
+v  <- read_csv("data/clean/terneros_supervivencia.csv", show_col_types = FALSE)
+tm <- read_csv("data/clean/powerbi/tasa_mensual.csv", show_col_types = FALSE)
+riesgo <- read_csv("reports/tables/riesgo_por_tramo.csv", show_col_types = FALSE)
+cox <- read_csv("reports/tables/cox_modelos.csv", show_col_types = FALSE)
+```
+
+# Resumen
+
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Terneros nacidos vivos"
+list(icon = "clipboard-data", color = "primary", value = format(nrow(v), big.mark = "."))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Muertes"
+list(icon = "heartbreak", color = "danger", value = sum(v$muerte))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Mortalidad en guachera"
+list(icon = "percent", color = "warning", value = paste0(round(100 * mean(v$muerte), 1), " %"))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Meses sobre el límite de control"
+list(icon = "exclamation-triangle", color = "danger", value = sum(tm$fuera_control, na.rm = TRUE))
+```
+
+## Row {height="78%"}
+
+### Column {width="60%"}
+
+```{r}
+#| title: "Tasa mensual de mortalidad (por 1.000 terneros-día)"
+include_graphics("reports/figures/tasa_mensual.png")
+```
+
+### Column {width="40%"}
+
+```{r}
+#| title: "¿Cuándo se concentra el riesgo?"
+include_graphics("reports/figures/riesgo_por_tramo.png")
+```
+
+# Factores de riesgo
+
+## Row
+
+```{r}
+#| title: "Mortalidad por grupo (IC 95 %)"
+include_graphics("reports/figures/mortalidad_por_grupo.png")
+```
+
+```{r}
+#| title: "Hazard ratios ajustados (Cox, modelo B)"
+include_graphics("reports/figures/forest_B.png")
+```
+
+# Supervivencia
+
+## Row
+
+```{r}
+#| title: "Supervivencia según categoría de la madre"
+include_graphics("reports/figures/km_categoria_madre.png")
+```
+
+```{r}
+#| title: "Edad a la muerte"
+include_graphics("reports/figures/edad_a_la_muerte.png")
+```
+
+# Brotes y recomendaciones
+
+## Row
+
+```{r}
+#| title: "Muertes por semana"
+include_graphics("reports/figures/curva_semanal_muertes.png")
+```
+
+```{r}
+#| title: "Mapa de calor mensual"
+include_graphics("reports/figures/mapa_calor_mensual.png")
+```
+
+## Row {height="30%"}
+
+::: {.card title="Qué haría el tambo"}
+- Activar una alerta cuando la tasa mensual supere el límite de control.
+- Registrar por ternero: hora y volumen de calostro, Brix, diarreas, tratamientos y causa de muerte.
+- Revisar manejo en las etapas con mayor riesgo (completar con tus resultados).
+:::

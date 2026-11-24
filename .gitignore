@@ -11,3 +11,6 @@ data/clean/
 # Temporales
 ~$*
 .DS_Store
+
+informe.html
+informe_files/
