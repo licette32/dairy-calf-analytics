@@ -19,21 +19,32 @@ umbral <- x |> group_by(anio) |>
   bind_rows(tibble(anio = 2023, umbral = corte_primer_2023))
 print(umbral)
 
-# ---- Número de parto de cada madre según sus apariciones ----
-madre_anio <- x |> filter(!is.na(numero_vaca)) |>
+# ---- Categoría de la madre ----
+# Criterio:
+# - Primer parto identificado: vaquillona_1er_parto.
+# - Desde el segundo parto en adelante: vaca.
+# - La identificación del primer parto depende del umbral de caravana.
+#   Verificar especialmente el umbral provisional de 2023.
+
+madre_anio <- x |>
+  filter(!is.na(numero_vaca)) |>
   distinct(numero_vaca, anio) |>
   left_join(umbral, by = "anio") |>
   arrange(numero_vaca, anio) |>
   group_by(numero_vaca) |>
-  mutate(rango  = row_number(),
-         parto  = if (first(numero_vaca >= umbral)) rango else NA_integer_,
-         categoria_madre = case_when(
-           parto == 1 ~ "vaquillona_1er_parto",
-           parto == 2 ~ "vaquillona_2do_parto",
-           TRUE       ~ "vaca")) |>
-  ungroup() |> select(numero_vaca, anio, categoria_madre)
+  mutate(
+    rango = row_number(),
+    parto = if (first(numero_vaca >= umbral)) rango else NA_integer_,
+    categoria_madre = case_when(
+      parto == 1 ~ "vaquillona_1er_parto",
+      TRUE       ~ "vaca"
+    )
+  ) |>
+  ungroup() |>
+  select(numero_vaca, anio, categoria_madre)
 
 x <- left_join(x, madre_anio, by = c("numero_vaca", "anio"))
+
 print(count(x, anio, categoria_madre))
 
 # ---- Códigos al azar con tabla privada de equivalencias ----

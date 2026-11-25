@@ -1,0 +1,7 @@
+variable,sobrevivieron,murieron,p_wilcoxon
+peso_nacer_kg,39.09 (4.17),39.71 (4.20),0.196
+thi_nac,17.47 (5.09),16.93 (5.64),0.32
+thi_media_pre7d,17.78 (4.66),17.12 (4.77),0.14
+thi_media_pre21d,17.87 (4.41),17.52 (4.78),0.382
+tmax_media_pre7d,23.51 (5.66),22.56 (5.55),0.085
+hum_media_pre7d,71.66 (8.99),73.43 (8.75),0.077

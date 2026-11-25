@@ -13,4 +13,6 @@ data/clean/
 .DS_Store
 
 informe.html
+anexo.html
 informe_files/
+estilo.scss

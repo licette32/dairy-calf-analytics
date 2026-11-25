@@ -21,13 +21,11 @@ etiquetas_pred <- c(
   "peso_nacer_kg"   = "Peso al nacer (kg)",
   "anio"            = "Año",
   "mes"             = "Mes de nacimiento",
-  "tmin_media_7d"   = "T. mín. media (7 días)",
-  "prop_lluvia_7d"  = "Proporción lluvia (7 días)",
-  "prop_frio_7d"    = "Proporción frío (7 días)",
-  "hum_media_7d"    = "Humedad media (7 días)",
-  "tmin_media_21d"  = "T. mín. media (21 días)",
-  "prop_lluvia_21d" = "Proporción lluvia (21 días)",
-  "prop_frio_21d"   = "Proporción frío (21 días)"
+  "thi_media_pre7d" = "THI medio (7 días previos)",
+  "thi_media_pre21d" = "THI medio (21 días previos)",
+  "thi_nac"         = "THI del nacimiento",
+  "tmax_media_pre7d" = "Temperatura máxima media (7 días previos)",
+  "hum_media_pre7d" = "Humedad media (7 días previos)"
 )
 
 limpiar_pred <- function(v) {
@@ -36,10 +34,25 @@ limpiar_pred <- function(v) {
 }
 
 # Solo variables conocidas al nacimiento o ambientales (sin obs_neumonia/diarrea/etc.)
-pred <- c("categoria_madre", "sexo", "raza", "asistido", "peso_nacer_kg", "anio", "mes",
-          "tmin_media_7d", "prop_lluvia_7d", "prop_frio_7d", "hum_media_7d",
-          "tmin_media_21d", "prop_lluvia_21d", "prop_frio_21d")
-rf_df <- x |> select(tiempo_surv, muerte_n, all_of(pred)) |> tidyr::drop_na()
+pred <- c(
+  "categoria_madre",
+  "sexo",
+  "raza",
+  "asistido",
+  "peso_nacer_kg",
+  "anio",
+  "mes",
+  "thi_media_pre7d",
+  "thi_media_pre21d",
+  "thi_nac",
+  "tmax_media_pre7d",
+  "hum_media_pre7d"
+)
+
+rf_df <- x |>
+  filter(!muerte_dia0) |>
+  select(tiempo_surv, muerte_n, all_of(pred)) |>
+  tidyr::drop_na()
 
 set.seed(2026)
 rf <- ranger(Surv(tiempo_surv, muerte_n) ~ ., data = rf_df, num.trees = 1000,
@@ -80,8 +93,9 @@ folds <- sample(rep(1:5, length.out = nrow(rf_df)))
 cv <- t(sapply(1:5, function(k) {
   tr <- rf_df[folds != k, ]; te <- rf_df[folds == k, ]
   ct <- te$tiempo_surv; ce <- te$muerte_n
-  m_cox <- coxph(Surv(tiempo_surv, muerte_n) ~ categoria_madre + asistido + peso_nacer_kg +
-                   anio + tmin_media_7d + prop_lluvia_7d, data = tr)
+  m_cox <- coxph(Surv(tiempo_surv, muerte_n) ~
+    categoria_madre + asistido + peso_nacer_kg +
+    anio + thi_media_pre7d + thi_nac, data = tr)
   lp  <- predict(m_cox, newdata = te, type = "lp")
   m_rf <- ranger(Surv(tiempo_surv, muerte_n) ~ ., data = tr, num.trees = 500, min.node.size = 15)
   chf <- rowSums(predict(m_rf, data = te)$chf)

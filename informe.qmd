@@ -1,109 +1,177 @@
 ---
 title: "Mortalidad de terneros en guachera"
-subtitle: "Tablero de seguimiento · tambo lechero, Santa Fe"
-format: dashboard
+subtitle: "Tambo lechero, Santa Fe (2023–2025)"
 lang: es
+format:
+  dashboard:
+    theme: [flatly, estilo.scss]
+    logo: assets/sello_logo.jpg
+    embed-resources: true
 ---
 
 ```{r}
 #| include: false
 library(dplyr); library(readr); library(knitr)
-v  <- read_csv("data/clean/terneros_supervivencia.csv", show_col_types = FALSE)
-tm <- read_csv("data/clean/powerbi/tasa_mensual.csv", show_col_types = FALSE)
-riesgo <- read_csv("reports/tables/riesgo_por_tramo.csv", show_col_types = FALSE)
-cox <- read_csv("reports/tables/cox_modelos.csv", show_col_types = FALSE)
+
+a <- read_csv("data/clean/terneros_analisis.csv", show_col_types = FALSE)
+p <- filter(a, !aborto)
+n_partos <- nrow(p)
+n_nm   <- sum(p$nacido_muerto,    na.rm = TRUE)
+n_dia0 <- sum(p$muerte_dia0,      na.rm = TRUE)
+n_post <- sum(p$muerte_posterior, na.rm = TRUE)
+pct_total <- format(round(100 * (n_nm + n_dia0 + n_post) / n_partos, 1), decimal.mark = ",")
+f_n <- function(x) format(x, big.mark = ".", decimal.mark = ",")
+
+mostrar_figura <- function(path) {
+  if (file.exists(path)) knitr::include_graphics(path)
+  else cat("Gráfico pendiente de generación:", path)
+}
 ```
 
 # Resumen
 
-## Row {height="22%"}
+## Row {height="18%"}
 
 ```{r}
-#| content: valuebox
-#| title: "Terneros nacidos vivos"
-list(icon = "clipboard-data", color = "primary", value = format(nrow(v), big.mark = "."))
+#| output: asis
+#| padding: 0px
+kpi <- function(valor, titulo, color = "verde") {
+  paste0(
+    '<div class="kpi ', color, '" style="flex: 1 1 0; min-width: 0; padding: 10px 14px; box-sizing: border-box;">',
+    '<div class="kpi-n" style="font-size: 1.6rem; line-height: 1.15; font-weight: 700;">', valor, '</div>',
+    '<div class="kpi-t" style="font-size: 0.85rem; line-height: 1.25; margin-top: 4px;">', titulo, '</div>',
+    '</div>'
+  )
+}
+
+html_kpis <- paste0(
+  '<div class="kpis" style="display: flex; flex-direction: row; align-items: stretch; gap: 12px; width: 100%;">',
+  kpi(f_n(n_partos), "partos analizados (sin abortos)", "verde"),
+  kpi(n_nm,          "nacieron muertos", "ambar"),
+  kpi(n_dia0,        "murieron el día 0", "rojo"),
+  kpi(n_post,        "murieron después, en la guachera", "rojo"),
+  kpi(paste0(pct_total, " %"), "de los partos se pierden", "ambar"),
+  '</div>'
+)
+
+knitr::asis_output(html_kpis)
+```
+
+## Row {height="82%"}
+
+```{r}
+#| title: "¿Cuántos se pierden y cuándo?"
+mostrar_figura("reports/figures/perdidas_por_100_partos.png")
 ```
 
 ```{r}
-#| content: valuebox
-#| title: "Muertes"
-list(icon = "heartbreak", color = "danger", value = sum(v$muerte))
+#| title: "¿Cómo cambió entre años?"
+mostrar_figura("reports/figures/perdidas_por_anio.png")
 ```
 
-```{r}
-#| content: valuebox
-#| title: "Mortalidad en guachera"
-list(icon = "percent", color = "warning", value = paste0(round(100 * mean(v$muerte), 1), " %"))
-```
-
-```{r}
-#| content: valuebox
-#| title: "Meses sobre el límite de control"
-list(icon = "exclamation-triangle", color = "danger", value = sum(tm$fuera_control, na.rm = TRUE))
-```
-
-## Row {height="78%"}
-
-### Column {width="60%"}
-
-```{r}
-#| title: "Tasa mensual de mortalidad (por 1.000 terneros-día)"
-include_graphics("reports/figures/tasa_mensual.png")
-```
-
-### Column {width="40%"}
-
-```{r}
-#| title: "¿Cuándo se concentra el riesgo?"
-include_graphics("reports/figures/riesgo_por_tramo.png")
-```
-
-# Factores de riesgo
+# Al nacer
 
 ## Row
 
 ```{r}
-#| title: "Mortalidad por grupo (IC 95 %)"
-include_graphics("reports/figures/mortalidad_por_grupo.png")
+#| title: "Muertes del día 0 según tipo de parto"
+mostrar_figura("reports/figures/dia0_por_tipo_parto.png")
 ```
 
 ```{r}
-#| title: "Hazard ratios ajustados (Cox, modelo B)"
-include_graphics("reports/figures/forest_B.png")
+#| title: "Vaquillonas (1.er parto) vs. vacas"
+mostrar_figura("reports/figures/vacas_vs_vaquillonas.png")
 ```
 
-# Supervivencia
+# En la guachera
 
 ## Row
 
 ```{r}
-#| title: "Supervivencia según categoría de la madre"
-include_graphics("reports/figures/km_categoria_madre.png")
+#| title: "¿Cuándo mueren?"
+mostrar_figura("reports/figures/edad_a_la_muerte.png")
 ```
 
 ```{r}
-#| title: "Edad a la muerte"
-include_graphics("reports/figures/edad_a_la_muerte.png")
+#| title: "Supervivencia por año de nacimiento"
+mostrar_figura("reports/figures/km_anio.png")
 ```
 
-# Brotes y recomendaciones
+# Causas
 
 ## Row
 
 ```{r}
-#| title: "Muertes por semana"
-include_graphics("reports/figures/curva_semanal_muertes.png")
+#| title: "Causa anotada de las muertes, por año"
+mostrar_figura("reports/figures/causas_por_anio.png")
 ```
 
 ```{r}
-#| title: "Mapa de calor mensual"
-include_graphics("reports/figures/mapa_calor_mensual.png")
+#| title: "Muertes por mes: diarrea vs. otras causas"
+mostrar_figura("reports/figures/muertes_mes_causa.png")
 ```
 
-## Row {height="30%"}
+# Factores
 
-::: {.card title="Qué haría el tambo"}
-- Activar una alerta cuando la tasa mensual supere el límite de control.
-- Registrar por ternero: hora y volumen de calostro, Brix, diarreas, tratamientos y causa de muerte.
-- Revisar manejo en las etapas con mayor riesgo (completar con tus resultados).
+## Row
+
+### Column {width="65%"}
+
+```{r}
+#| title: "Factores asociados a la mortalidad después del día 0 (Cox)"
+mostrar_figura("reports/figures/forest_B.png")
+```
+
+### Column {width="35%"}
+
+::: {.card .card-texto title="Cómo leer el gráfico"}
+- Cada punto es el riesgo relativo (HR) frente al grupo de referencia. HR = 1 es igual riesgo.
+- Si la línea cruza el 1, la diferencia no es concluyente.
+- En rojo: mayor riesgo con respaldo estadístico.
+- Son asociaciones, no causas.
+:::
+
+# Clima
+
+## Row
+
+```{r}
+#| title: "Mortalidad según la temperatura mínima del día"
+mostrar_figura("reports/figures/mortalidad_vs_tmin_diaria.png")
+```
+
+```{r}
+#| title: "Exposición térmica prenatal (THI) y pérdidas"
+mostrar_figura("reports/figures/thi_terciles.png")
+```
+
+# Conclusiones
+
+## Row {height="74%"}
+
+::: {.card .card-texto title="Qué encontramos"}
+- **9,1 % de pérdidas** (~3 nacen muertos, ~1 día 0, ~6 guachera).
+- **Día 0:** las 11 muertes ocurrieron en partos asistidos.
+- **2023–2025:** suba en las tres etapas; en 2025 destacan las diarreas.
+- **Factores y clima:** sin efecto claro; frío solo señal débil.
+:::
+
+::: {.card .card-texto title="Qué haría el tambo"}
+- **Parto:** protocolo de intervención y registro de hora.
+- **Manejo y guachera:** mayor estabilidad de lote y calostro/preventivos tempranos.
+- **Registros:** anotar calostro, diarreas, tratamientos y causa para medir el impacto.
+- **Seguimiento:** control mensual y evaluación en 2026.
+:::
+
+::: {.card .card-texto title="Limitaciones"}
+- **Un establecimiento y rotación:** datos de un tambo con movimiento de animales entre tambos de la empresa.
+- **Variables de registro:** categoría materna derivada de caravana y sin hora exacta en el día 0.
+- **Clima externo:** datos de grilla, no del microclima dentro de la guachera.
+- **Causa observada:** registro de campo sin confirmación de laboratorio sistemática.
+:::
+
+## Row {height="26%"}
+
+::: {.card .card-texto .card-cierre-abajo title="Mensaje para llevarse"}
+Tres etapas críticas (**al nacer, día 0 y guachera**) requieren manejo y registros específicos.
 :::
